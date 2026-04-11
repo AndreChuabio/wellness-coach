@@ -1,8 +1,8 @@
 const LOCAL_API_BASE = "http://localhost:8000";
 const PRODUCTION_API_BASE = "https://healthmaxx-production.up.railway.app";
-const API_BASE = window.location.hostname.includes("railway.app")
-  ? PRODUCTION_API_BASE
-  : LOCAL_API_BASE;
+const API_BASE = window.location.hostname.includes("localhost")
+  ? LOCAL_API_BASE
+  : PRODUCTION_API_BASE;
 
 const CATEGORY_ICONS = {
   breathing: "🫁",

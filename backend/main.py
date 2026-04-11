@@ -13,6 +13,8 @@ import os
 from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from dotenv import load_dotenv
 
@@ -34,6 +36,10 @@ app.add_middleware(
 )
 
 CONTEXT_FILE = Path(__file__).parent.parent / "context.json"
+FRONTEND_DIR = Path(__file__).parent.parent / "frontend"
+
+if FRONTEND_DIR.exists():
+    app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR)), name="static")
 
 
 class StartSessionRequest(BaseModel):
@@ -42,6 +48,9 @@ class StartSessionRequest(BaseModel):
 
 @app.get("/")
 def root():
+    index = FRONTEND_DIR / "index.html"
+    if index.exists():
+        return FileResponse(str(index))
     return {"status": "ok", "app": "Wellness Coach AI"}
 
 
