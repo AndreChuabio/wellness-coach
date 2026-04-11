@@ -14,6 +14,8 @@ TAVUS_BASE_URL = "https://tavusapi.com/v2"
 MAX_SESSION_MINUTES = 5  # Keep it snappy — this is a morning briefing, not therapy
 
 # Read at call time (not module load) so .env changes are picked up
+
+
 def _get_keys():
     return (
         os.getenv("TAVUS_API_KEY"),
@@ -22,47 +24,21 @@ def _get_keys():
     )
 
 
-OBJECTIVES = [
-    {
-        "objective": "Greet the user warmly and deliver their personalized health summary (sleep, HRV, recovery) in 2-3 sentences.",
-        "order": 1
-    },
-    {
-        "objective": "Present today's top 2 wellness recommendations clearly and concisely.",
-        "order": 2
-    },
-    {
-        "objective": "Ask if the user wants to be guided through a quick wellness exercise (breathing, meditation, or stretching). If yes, guide them. If no, skip to closing.",
-        "order": 3
-    },
-    {
-        "objective": "Close with a one-sentence motivational send-off tailored to their day ahead. End the conversation.",
-        "order": 4
-    }
-]
+SESSION_RULES = """
+--- SESSION RULES ---
+Objectives (follow in order):
+1. Greet warmly and deliver the health summary (sleep, HRV, recovery) in 2-3 sentences.
+2. Present the top 2 wellness recommendations clearly and concisely.
+3. Ask if the user wants to be guided through a quick wellness exercise. If yes, guide them step by step. If no, skip to closing.
+4. Close with one motivational sentence tailored to their day ahead, then end the session.
 
-GUARDRAILS = [
-    {
-        "guardrail": "Keep the entire session under 5 minutes. If the conversation has been going for more than 4 minutes, wrap up immediately with a closing statement.",
-        "action": "override"
-    },
-    {
-        "guardrail": "Keep all responses short — 2-3 sentences max unless guiding an exercise.",
-        "action": "override"
-    },
-    {
-        "guardrail": "Never give medical diagnoses, prescribe medication, or claim health data is medical advice.",
-        "action": "redirect"
-    },
-    {
-        "guardrail": "Never discuss topics unrelated to wellness, health, or the user's day ahead.",
-        "action": "redirect"
-    },
-    {
-        "guardrail": "If the user expresses a mental health crisis or emergency, gently refer them to a professional and end the session.",
-        "action": "override"
-    }
-]
+Guardrails:
+- Keep the entire session under 5 minutes. If it has gone on for 4+ minutes, wrap up immediately.
+- Keep all responses to 2-3 sentences max unless actively guiding an exercise.
+- Never give medical diagnoses, prescribe medication, or present health data as medical advice.
+- Never discuss topics unrelated to wellness, health, or the user's day ahead.
+- If the user expresses a mental health crisis or emergency, gently refer them to a professional and end the session.
+--- END SESSION RULES ---"""
 
 
 def create_conversation(system_prompt: str, greeting: str, user_name: str = "there") -> dict:
@@ -79,7 +55,8 @@ def create_conversation(system_prompt: str, greeting: str, user_name: str = "the
         return _mock_conversation()
 
     if not replica_id or not persona_id:
-        print(f"[tavus] Missing REPLICA_ID={replica_id!r} or PERSONA_ID={persona_id!r} — returning mock")
+        print(
+            f"[tavus] Missing REPLICA_ID={replica_id!r} or PERSONA_ID={persona_id!r} — returning mock")
         return _mock_conversation()
 
     headers = {
@@ -93,10 +70,8 @@ def create_conversation(system_prompt: str, greeting: str, user_name: str = "the
         "replica_id": replica_id,
         "persona_id": persona_id,
         "conversation_name": "Wellness Briefing",
-        "conversational_context": system_prompt,
+        "conversational_context": system_prompt + "\n\n" + SESSION_RULES,
         "custom_greeting": greeting,
-        "objectives": OBJECTIVES,
-        "guardrails": GUARDRAILS,
         "properties": {
             "max_call_duration": MAX_SESSION_MINUTES * 60,  # hard cutoff
             "participant_left_timeout": 20,
@@ -108,7 +83,8 @@ def create_conversation(system_prompt: str, greeting: str, user_name: str = "the
         }
     }
 
-    print(f"[tavus] Creating conversation with replica={replica_id} persona={persona_id}")
+    print(
+        f"[tavus] Creating conversation with replica={replica_id} persona={persona_id}")
     print(f"[tavus] Greeting: {greeting[:80]}...")
 
     try:
@@ -118,7 +94,8 @@ def create_conversation(system_prompt: str, greeting: str, user_name: str = "the
             json=payload,
             timeout=15
         )
-        print(f"[tavus] Response {response.status_code}: {response.text[:300]}")
+        print(
+            f"[tavus] Response {response.status_code}: {response.text[:300]}")
         response.raise_for_status()
         data = response.json()
         return {
