@@ -74,8 +74,8 @@ def create_conversation(system_prompt: str, greeting: str, user_name: str = "the
         "custom_greeting": greeting,
         "properties": {
             "max_call_duration": MAX_SESSION_MINUTES * 60,  # hard cutoff
-            "participant_left_timeout": 20,
-            "participant_absent_timeout": 30,
+            "participant_left_timeout": 60,
+            "participant_absent_timeout": 300,
             "enable_recording": False,
             "apply_greenscreen": False,
             "language": "english",
