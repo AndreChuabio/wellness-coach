@@ -1,4 +1,8 @@
-const API_BASE = "http://localhost:8000";
+const LOCAL_API_BASE = "http://localhost:8000";
+const PRODUCTION_API_BASE = "https://wellness-coach.up.railway.app";
+const API_BASE = window.location.hostname.includes("railway.app")
+  ? PRODUCTION_API_BASE
+  : LOCAL_API_BASE;
 
 const CATEGORY_ICONS = {
   breathing: "🫁",
