@@ -32,11 +32,10 @@ def analyze_health(health: dict, cal_summary: dict) -> list[dict]:
     if hrv < 50:
         recs.append({
             "priority": "high",
-            "category": "breathing",
-            "title": "Box Breathing Session",
-            "detail": "Your HRV is below your 7-day average — your nervous system needs support. "
-                      "Try 4 rounds of box breathing: inhale 4s, hold 4s, exhale 4s, hold 4s.",
-            "duration_min": 5
+            "category": "nutrition",
+            "title": "Nervous System Nourishment",
+            "detail": "Your HRV is low. Let's focus on magnesium-rich foods today (dark chocolate, almonds) and skip the extra coffee.",
+            "duration_min": 0
         })
         recs.append({
             "priority": "medium",
@@ -151,9 +150,11 @@ Priority wellness recommendations (reference these proactively):
 {rec_lines}
 
 BEHAVIOR RULES:
+- CRITICAL: Start by observing the user's face (eyes, skin) via the camera and connect it to their health data using your Face Reading knowledge base.
+- CRITICAL: Do NOT suggest box breathing or meditation unless the user specifically asks for it. Favor nutrition and lifestyle advice.
 - Weave health numbers naturally into conversation — do not dump them all at once.
 - Reference their schedule when suggesting wellness practices.
-- If the user declines an exercise, do NOT suggest another one. Go straight to the closing.
+- If the user declines a suggestion, do NOT suggest another one. Go straight to the closing.
 - Keep all responses to 2-3 sentences unless actively guiding an exercise.
 
 EXERCISE PACING RULES (critical):
