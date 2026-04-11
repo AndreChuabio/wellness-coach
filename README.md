@@ -123,6 +123,46 @@ Click "Start Morning Briefing" — the avatar will greet you by name with contex
 
 ---
 
+## Deploying on Railway
+
+This repo is Railway-ready using the root-level `Procfile`.
+
+1. Create a Railway account at https://railway.app.
+2. Create a new project and connect this GitHub repo, or use the Railway CLI:
+
+```bash
+cd /path/to/wellness-coach
+railway init
+```
+
+3. Make sure Railway uses your project root and the following start command:
+
+```bash
+uvicorn backend.main:app --host 0.0.0.0 --port $PORT
+```
+
+4. Set the required environment variables in Railway:
+
+- `ANTHROPIC_API_KEY`
+- `TAVUS_API_KEY`
+- `TAVUS_REPLICA_ID`
+- `TAVUS_PERSONA_ID`
+
+Optional variables:
+
+- `ELEVENLABS_API_KEY`
+- `TRANSITION_API_KEY`
+- `GOOGLE_CREDENTIALS_PATH`
+- `GOOGLE_TOKEN_PATH`
+
+5. Deploy the service.
+
+Railway will install `backend/requirements.txt` and start the FastAPI app from `backend/main.py`.
+
+> If you want a free/hackathon-friendly setup, Railway is the cheapest and easiest choice for this FastAPI backend.
+
+---
+
 ## Connecting Real Wearable Data
 
 Health data is currently mocked in `backend/health_mock.py`. Replace `get_health_data()` with a real wearable integration:
