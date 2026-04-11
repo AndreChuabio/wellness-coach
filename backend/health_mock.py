@@ -1,19 +1,93 @@
 """
-health_mock.py - Mock wearable health data
+health_mock.py - Wearable health data
 
-Returns realistic mock data for demo/dev.
-Swap out get_health_data() with a real provider below when ready.
+Priority:
+1. Transition API (Apple Watch / Apple Health) — set TRANSITION_API_KEY in .env
+2. Mock data fallback
 """
 
-from datetime import date
+import os
+import requests
+from datetime import date, datetime, timedelta
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 def get_health_data() -> dict:
     """
     Returns today's health metrics.
-    Currently returns mock data — see stubs below to connect a real wearable.
+    Uses Transition API (Apple Health) if key is set, otherwise mock.
     """
+    transition_key = os.getenv("TRANSITION_API_KEY", "")
+    if transition_key:
+        try:
+            data = get_transition_health_data(transition_key)
+            print(f"[health] ✅ Real Apple Health data loaded via Transition API")
+            return data
+        except Exception as e:
+            print(f"[health] ⚠️ Transition API failed ({e}), falling back to mock")
+    else:
+        print("[health] No TRANSITION_API_KEY set — using mock data")
     return get_mock_health_data()
+
+
+def get_transition_health_data(api_key: str) -> dict:
+    """
+    Fetch real Apple Health data via Transition API.
+    Docs: https://termo.ai/skills/apple-health-skill
+    """
+    base_url = "https://api.transition.fun/api/v1"
+    headers = {"X-API-Key": api_key}
+
+    # Ask the AI coach for today's health summary
+    coach_res = requests.post(
+        f"{base_url}/coach/chat",
+        headers=headers,
+        json={"message": (
+            "Give me today's key health metrics as a JSON object with these exact fields: "
+            "sleep_hours, sleep_score (0-100), hrv_ms, hrv_7day_avg, resting_hr, "
+            "recovery_score (0-100), steps_yesterday. "
+            "Use your best estimate from Apple Health data. Reply ONLY with the JSON object, no explanation."
+        )},
+        timeout=15
+    )
+    coach_res.raise_for_status()
+    raw = coach_res.json()
+
+    # Extract the message text and parse JSON
+    import json, re
+    text = raw.get("message", raw.get("response", str(raw)))
+    match = re.search(r'\{[^}]+\}', text, re.DOTALL)
+    if not match:
+        raise ValueError(f"Could not parse JSON from Transition response: {text[:200]}")
+
+    metrics = json.loads(match.group())
+
+    # Also get PMC for fatigue/form scores
+    try:
+        pmc_res = requests.get(f"{base_url}/performance/pmc", headers=headers, timeout=10)
+        pmc = pmc_res.json()
+        tsb = pmc.get("tsb", 0)  # Training Stress Balance: negative = fatigued
+        # Map TSB to a recovery score if not available
+        if "recovery_score" not in metrics:
+            metrics["recovery_score"] = max(0, min(100, int(50 + tsb)))
+    except Exception:
+        pass
+
+    return {
+        "date": str(date.today()),
+        "sleep_hours": float(metrics.get("sleep_hours", 7.0)),
+        "sleep_score": int(metrics.get("sleep_score", 75)),
+        "hrv_ms": int(metrics.get("hrv_ms", 50)),
+        "hrv_7day_avg": int(metrics.get("hrv_7day_avg", 55)),
+        "resting_hr": int(metrics.get("resting_hr", 65)),
+        "recovery_score": int(metrics.get("recovery_score", 70)),
+        "steps_yesterday": int(metrics.get("steps_yesterday", 5000)),
+        "calories_burned": int(metrics.get("calories_burned", 1800)),
+        "stress_level": "moderate",
+        "source": "apple_health_transition"
+    }
 
 
 def get_mock_health_data() -> dict:

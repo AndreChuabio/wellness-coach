@@ -52,10 +52,11 @@ def debug_env():
         if not val: return "❌ MISSING"
         return f"✅ {val[:6]}..."
     return {
-        "ANTHROPIC_API_KEY": mask(os.getenv("ANTHROPIC_API_KEY")),
-        "TAVUS_API_KEY":     mask(os.getenv("TAVUS_API_KEY")),
-        "TAVUS_REPLICA_ID":  mask(os.getenv("TAVUS_REPLICA_ID")),
-        "TAVUS_PERSONA_ID":  mask(os.getenv("TAVUS_PERSONA_ID")),
+        "ANTHROPIC_API_KEY":   mask(os.getenv("ANTHROPIC_API_KEY")),
+        "TAVUS_API_KEY":       mask(os.getenv("TAVUS_API_KEY")),
+        "TAVUS_REPLICA_ID":    mask(os.getenv("TAVUS_REPLICA_ID")),
+        "TAVUS_PERSONA_ID":    mask(os.getenv("TAVUS_PERSONA_ID")),
+        "TRANSITION_API_KEY": mask(os.getenv("TRANSITION_API_KEY")),
     }
 
 
