@@ -26,21 +26,44 @@ def get_health_data() -> dict:
             print(f"[health] ✅ Real Apple Health data loaded via Transition API")
             return data
         except Exception as e:
-            print(f"[health] ⚠️ Transition API failed ({e}), falling back to mock")
+            print(
+                f"[health] ⚠️ Transition API failed ({e}), falling back to mock")
     else:
         print("[health] No TRANSITION_API_KEY set — using mock data")
     return get_mock_health_data()
 
 
+def _parse_sse_text(raw_text: str) -> str:
+    """
+    Parse SSE stream response from Transition API.
+    Concatenates all 'chunk' content fields into a single string.
+    """
+    import json as _json
+    parts = []
+    for line in raw_text.splitlines():
+        line = line.strip()
+        if not line.startswith("data:"):
+            continue
+        payload = line[5:].strip()
+        try:
+            obj = _json.loads(payload)
+            if obj.get("type") == "chunk":
+                parts.append(obj.get("content", ""))
+        except Exception:
+            continue
+    return "".join(parts)
+
+
 def get_transition_health_data(api_key: str) -> dict:
     """
-    Fetch real Apple Health data via Transition API.
+    Fetch real Apple Health data via Transition API (SSE streaming response).
     Docs: https://termo.ai/skills/apple-health-skill
     """
+    import json
+    import re
     base_url = "https://api.transition.fun/api/v1"
     headers = {"X-API-Key": api_key}
 
-    # Ask the AI coach for today's health summary
     coach_res = requests.post(
         f"{base_url}/coach/chat",
         headers=headers,
@@ -50,23 +73,32 @@ def get_transition_health_data(api_key: str) -> dict:
             "recovery_score (0-100), steps_yesterday. "
             "Use your best estimate from Apple Health data. Reply ONLY with the JSON object, no explanation."
         )},
-        timeout=15
+        timeout=20
     )
     coach_res.raise_for_status()
-    raw = coach_res.json()
 
-    # Extract the message text and parse JSON
-    import json, re
-    text = raw.get("message", raw.get("response", str(raw)))
-    match = re.search(r'\{[^}]+\}', text, re.DOTALL)
+    # Response is SSE — parse chunks into full text first
+    text = _parse_sse_text(coach_res.text)
+    if not text:
+        raise ValueError(
+            "Empty response from Transition API — app may not have synced yet")
+
+    # Check if the model said it has no data
+    if "don't have" in text.lower() or "no data" in text.lower() or "null" in text.lower():
+        raise ValueError(
+            f"Transition has no health data yet (first sync may be pending): {text[:200]}")
+
+    match = re.search(r'\{.*?\}', text, re.DOTALL)
     if not match:
-        raise ValueError(f"Could not parse JSON from Transition response: {text[:200]}")
+        raise ValueError(
+            f"Could not parse JSON from Transition response: {text[:200]}")
 
     metrics = json.loads(match.group())
 
     # Also get PMC for fatigue/form scores
     try:
-        pmc_res = requests.get(f"{base_url}/performance/pmc", headers=headers, timeout=10)
+        pmc_res = requests.get(
+            f"{base_url}/performance/pmc", headers=headers, timeout=10)
         pmc = pmc_res.json()
         tsb = pmc.get("tsb", 0)  # Training Stress Balance: negative = fatigued
         # Map TSB to a recovery score if not available
@@ -121,7 +153,8 @@ def get_fitbit_health_data(access_token: str) -> dict:
     TODO: Connect to Fitbit Web API
     Docs: https://dev.fitbit.com/build/reference/web-api/
     """
-    raise NotImplementedError("Plug in your Fitbit OAuth token and implement this")
+    raise NotImplementedError(
+        "Plug in your Fitbit OAuth token and implement this")
 
 
 def get_apple_health_data() -> dict:
@@ -132,4 +165,5 @@ def get_apple_health_data() -> dict:
     - Use Apple HealthKit via a companion iOS app
     - Use Terra API (https://tryterra.co) as a unified wearable bridge
     """
-    raise NotImplementedError("Use Health Auto Export or Terra API for Apple Health")
+    raise NotImplementedError(
+        "Use Health Auto Export or Terra API for Apple Health")
