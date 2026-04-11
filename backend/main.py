@@ -45,6 +45,20 @@ def root():
     return {"status": "ok", "app": "Wellness Coach AI"}
 
 
+@app.get("/debug-env")
+def debug_env():
+    """Quick check that all env vars are loaded (values masked)."""
+    def mask(val):
+        if not val: return "❌ MISSING"
+        return f"✅ {val[:6]}..."
+    return {
+        "ANTHROPIC_API_KEY": mask(os.getenv("ANTHROPIC_API_KEY")),
+        "TAVUS_API_KEY":     mask(os.getenv("TAVUS_API_KEY")),
+        "TAVUS_REPLICA_ID":  mask(os.getenv("TAVUS_REPLICA_ID")),
+        "TAVUS_PERSONA_ID":  mask(os.getenv("TAVUS_PERSONA_ID")),
+    }
+
+
 @app.get("/health-data")
 def health_data():
     """Return today's wearable health metrics."""
