@@ -98,6 +98,15 @@ The setup script prints the exact paths to copy after it completes.
 
 Note: `credentials.json` and `token.pickle` are gitignored and should never be committed.
 
+For Railway deployment, you can also inject the credentials directly via environment variables instead of uploading files:
+
+```
+GOOGLE_CREDENTIALS_JSON="<raw credentials.json content>"
+GOOGLE_TOKEN_PICKLE_B64="<base64 of token.pickle>"
+```
+
+The backend will materialize these into local files at startup so Google Calendar can work in the deployed app.
+
 ### 4. Run the Backend
 
 ```bash
