@@ -122,15 +122,27 @@ def _build_context_block(health: dict, events: list[dict], recommendations: list
         for i, r in enumerate(recommendations)
     )
 
+    # Trend block
+    trend = health.get("trend", {})
+    trend_block = ""
+    if trend:
+        trend_block = f"""
+Weekly trend analysis:
+- {trend.get('hrv_trend_summary', '')}
+- Sleep score 7-day avg: {trend.get('sleep_score_7day_avg', 'N/A')}/100
+- Recovery 7-day avg: {trend.get('recovery_7day_avg', 'N/A')}/100
+- Days with low HRV (<50ms) in a row: {trend.get('consecutive_days_low_hrv', 0)}
+- Weekly insight: {trend.get('weekly_insight', '')}"""
+
     return f"""--- USER HEALTH CONTEXT FOR TODAY ---
 
-Health metrics:
+Today's metrics:
 - Sleep: {health['sleep_hours']} hrs, score {health['sleep_score']}/100
 - HRV: {health['hrv_ms']}ms ({hrv_trend} 7-day average of {health['hrv_7day_avg']}ms)
 - Resting HR: {health['resting_hr']} bpm
 - Recovery score: {health['recovery_score']}/100
 - Steps yesterday: {health['steps_yesterday']}
-- Stress level: {health.get('stress_level', 'unknown')}
+- Stress level: {health.get('stress_level', 'unknown')}{trend_block}
 
 Today's schedule ({cal_summary['total_events']} events):
 {event_lines}
