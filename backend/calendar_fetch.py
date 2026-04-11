@@ -1,34 +1,111 @@
 """
-calendar_fetch.py - Fetch today's calendar events via gog CLI
+calendar_fetch.py - Fetch today's calendar events via Google Calendar API
 
-Runs `gog calendar list --days 1` and parses output.
-Falls back to mock data if gog is unavailable.
+Uses google-api-python-client with OAuth2 credentials.
+Falls back to mock data if credentials are unavailable.
 """
 
+import os
 import subprocess
 import json
 import re
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 def get_calendar_events() -> list[dict]:
     """
-    Returns today's calendar events as a list of dicts.
-    Falls back to mock data if gog CLI is not available.
+    Returns today's calendar events.
+    Tries Google Calendar API first, falls back to mock.
     """
+    events = _try_gcal_api()
+    if events is not None:
+        return events
+    print("[calendar] Falling back to mock data")
+    return get_mock_calendar()
+
+
+def _try_gcal_api() -> list[dict] | None:
+    """Fetch real events from Google Calendar API using service account or OAuth credentials."""
+    creds_path = os.getenv("GOOGLE_CREDENTIALS_PATH", "")
+    token_path = os.getenv("GOOGLE_TOKEN_PATH", "")
+
+    if not creds_path and not token_path:
+        print("[calendar] No GOOGLE_CREDENTIALS_PATH or GOOGLE_TOKEN_PATH set")
+        return None
+
     try:
-        result = subprocess.run(
-            ["gog", "calendar", "list", "--days", "1"],
-            capture_output=True, text=True, timeout=10
-        )
-        if result.returncode == 0 and result.stdout.strip():
-            return parse_gog_output(result.stdout)
-        else:
-            print(f"[calendar] gog returned non-zero or empty: {result.stderr}")
-            return get_mock_calendar()
-    except (FileNotFoundError, subprocess.TimeoutExpired) as e:
-        print(f"[calendar] gog not available ({e}), using mock data")
-        return get_mock_calendar()
+        from google.oauth2.credentials import Credentials
+        from google.auth.transport.requests import Request
+        from googleapiclient.discovery import build
+        import pickle
+
+        creds = None
+
+        # Load saved token
+        if token_path and os.path.exists(token_path):
+            with open(token_path, "rb") as f:
+                creds = pickle.load(f)
+
+        # Refresh if expired
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+            with open(token_path, "wb") as f:
+                pickle.dump(creds, f)
+
+        if not creds or not creds.valid:
+            print("[calendar] Credentials invalid or missing")
+            return None
+
+        service = build("calendar", "v3", credentials=creds)
+
+        # Get today's events
+        now = datetime.now(timezone.utc)
+        start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        end = start + timedelta(days=1)
+
+        result = service.events().list(
+            calendarId="primary",
+            timeMin=start.isoformat(),
+            timeMax=end.isoformat(),
+            singleEvents=True,
+            orderBy="startTime",
+            maxResults=20
+        ).execute()
+
+        items = result.get("items", [])
+        events = []
+        for item in items:
+            start_dt = item["start"].get("dateTime", item["start"].get("date", ""))
+            try:
+                dt = datetime.fromisoformat(start_dt.replace("Z", "+00:00"))
+                time_str = dt.astimezone().strftime("%-I:%M %p")
+            except Exception:
+                time_str = start_dt
+
+            summary = item.get("summary", "(No title)")
+            # Detect high-stakes meetings by keywords
+            high_stakes_keywords = ["presentation", "interview", "demo", "pitch", "review", "deadline"]
+            is_high_stakes = any(kw in summary.lower() for kw in high_stakes_keywords)
+
+            events.append({
+                "time": time_str,
+                "title": summary,
+                "duration_min": 60,
+                "type": "high_stakes" if is_high_stakes else "meeting"
+            })
+
+        print(f"[calendar] Fetched {len(events)} real events from Google Calendar")
+        return events if events else []
+
+    except ImportError:
+        print("[calendar] google-api-python-client not installed, run: pip install google-api-python-client google-auth")
+        return None
+    except Exception as e:
+        print(f"[calendar] GCal API error: {e}")
+        return None
 
 
 def parse_gog_output(raw: str) -> list[dict]:
