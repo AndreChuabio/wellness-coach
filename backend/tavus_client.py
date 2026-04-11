@@ -58,6 +58,7 @@ def create_conversation(system_prompt: str, greeting: str, user_name: str = "the
             "enable_recording": False,
             "apply_greenscreen": False,
             "language": "english",
+            "enable_closed_captions": True,
         }
     }
 

@@ -93,6 +93,7 @@ async function startSession() {
     if (data.conversation_url && !data.conversation_url.includes("mock")) {
       frame.src = data.conversation_url;
       frame.style.display = "block";
+      document.getElementById("micHint").style.display = "block";
     } else {
       // Mock mode — show greeting
       loading.style.display = "none";
