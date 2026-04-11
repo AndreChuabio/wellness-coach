@@ -23,6 +23,7 @@ load_dotenv(Path(__file__).parent.parent / ".env")
 from health_mock import get_health_data
 from calendar_fetch import get_calendar_events
 from context_builder import build_system_prompt
+from tavus_client import create_conversation
 
 OUTPUT_FILE = Path(__file__).parent.parent / "context.json"
 
@@ -38,11 +39,23 @@ def main():
 
     context = build_system_prompt(health, events)
 
-    # Save to context.json
+    # Create Tavus session so the link is warm and ready
+    print("  Creating Tavus CVI session...")
+    conversation = create_conversation(
+        system_prompt=context["system_prompt"],
+        greeting=context["greeting"]
+    )
+    conversation_url = conversation.get("conversation_url", "")
+    is_mock = conversation.get("status") == "mock"
+    print(f"  {'[MOCK] ' if is_mock else ''}Conversation URL: {conversation_url}")
+
+    # Save everything to context.json
     output = {
         "generated_at": datetime.now().isoformat(),
         "health": health,
         "events": events,
+        "conversation_url": conversation_url,
+        "conversation_id": conversation.get("conversation_id"),
         **context
     }
     with open(OUTPUT_FILE, "w") as f:
@@ -55,6 +68,8 @@ def main():
         print(f"     {rec['detail'][:100]}...")
 
     print(f"\n💬 Greeting: {context['greeting']}")
+    if conversation_url:
+        print(f"\n🔗 Tavus session: {conversation_url}")
 
 
 if __name__ == "__main__":
