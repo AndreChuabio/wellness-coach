@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Wellness Coach AI</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+
+    <!-- Header -->
+    <header class="header">
+      <div class="logo">
+        <span class="logo-icon">🤖</span>
+        <span class="logo-text">Wellness Coach</span>
+      </div>
+      <div class="date-display" id="dateDisplay"></div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main">
+
+      <!-- Left Panel: Health + Calendar -->
+      <aside class="sidebar">
+        <section class="card health-card">
+          <h3>Today's Health</h3>
+          <div class="stats" id="healthStats">
+            <div class="stat"><span class="stat-label">Sleep Score</span><span class="stat-value" id="sleepScore">—</span></div>
+            <div class="stat"><span class="stat-label">HRV</span><span class="stat-value" id="hrv">—</span></div>
+            <div class="stat"><span class="stat-label">Recovery</span><span class="stat-value" id="recovery">—</span></div>
+          </div>
+        </section>
+
+        <section class="card calendar-card">
+          <h3>Today's Schedule</h3>
+          <ul class="event-list" id="eventList">
+            <li class="loading-text">Loading...</li>
+          </ul>
+        </section>
+      </aside>
+
+      <!-- Center: Video + Start Button -->
+      <section class="center-panel">
+        <div class="video-container" id="videoContainer">
+          <div class="pre-session" id="preSession">
+            <div class="avatar-placeholder">
+              <span class="avatar-emoji">🤖</span>
+              <p class="avatar-name">Baymax</p>
+              <p class="avatar-subtitle">Your Personal Wellness Coach</p>
+            </div>
+            <button class="start-btn" id="startBtn" onclick="startSession()">
+              <span class="btn-icon">▶</span>
+              Start Morning Briefing
+            </button>
+          </div>
+          <div class="loading-session" id="loadingSession" style="display:none">
+            <div class="spinner"></div>
+            <p>Baymax is preparing your personalized briefing...</p>
+          </div>
+          <iframe
+            id="tavusFrame"
+            class="tavus-frame"
+            style="display:none"
+            allow="camera; microphone; autoplay"
+            allowfullscreen
+          ></iframe>
+        </div>
+
+        <!-- Recommendations -->
+        <div class="recommendations" id="recommendations" style="display:none">
+          <h3>Today's Wellness Plan</h3>
+          <div class="rec-cards" id="recCards"></div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
