@@ -1,0 +1,20 @@
+{
+  "name": "transition-apple-health",
+  "version": "1.0.0",
+  "description": "OpenClaw plugin to fetch real Apple Health data via Transition API",
+  "main": "index.js",
+  "openclaw": {
+    "tools": [
+      {
+        "name": "get_apple_health_data",
+        "description": "Fetch the user's real Apple Health data for today (sleep, HRV, recovery, resting HR) via the Transition API.",
+        "parameters": {
+          "type": "object",
+          "properties": {},
+          "required": []
+        },
+        "handler": "node index.js"
+      }
+    ]
+  }
+}
