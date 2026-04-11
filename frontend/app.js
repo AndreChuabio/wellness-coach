@@ -81,7 +81,7 @@ async function startSession() {
     const res = await fetch(`${API_BASE}/start-session`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user_name: "there" })
+      body: JSON.stringify({ user_name: "Andre" })
     });
 
     if (!res.ok) throw new Error(`Server error: ${res.status}`);
