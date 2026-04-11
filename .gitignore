@@ -8,3 +8,5 @@ context.json
 .DS_Store
 *.egg-info/
 dist/
+credentials.json
+token.pickle
