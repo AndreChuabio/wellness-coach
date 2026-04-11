@@ -32,7 +32,19 @@ def load_context() -> dict:
         print("[briefing] No context.json found — run morning_context.py first")
         sys.exit(1)
     with open(CONTEXT_FILE) as f:
-        return json.load(f)
+        ctx = json.load(f)
+
+    # Warn if context is stale (> 10 min old)
+    generated_at = ctx.get("generated_at", "")
+    if generated_at:
+        try:
+            age = datetime.now() - datetime.fromisoformat(generated_at)
+            if age.total_seconds() > 600:
+                print(f"[briefing] ⚠️  Context is {int(age.total_seconds()/60)} min old — Tavus link may be expired")
+                print("[briefing] Re-run morning_context.py to get a fresh session")
+        except Exception:
+            pass
+    return ctx
 
 
 def format_telegram_message(ctx: dict) -> str:
@@ -72,10 +84,12 @@ def format_telegram_message(ctx: dict) -> str:
         icon = icons.get(top_rec["category"], "✨")
         rec_line = f"\n{icon} *Top rec:* {top_rec['title']} ({top_rec['duration_min']} min)"
 
-    # Tavus link
+    # Tavus link — include timestamp so user knows session is fresh
+    now_str = datetime.now().strftime("%-I:%M %p")
     link_line = ""
     if conversation_url and "mock" not in conversation_url:
         link_line = f"\n\n💬 [Start your morning briefing with Baymax]({conversation_url})"
+        link_line += f"\n_Session created at {now_str} — tap within 10 min_"
     else:
         link_line = "\n\n💬 *Open the Wellness Coach app to chat with Baymax*"
 
