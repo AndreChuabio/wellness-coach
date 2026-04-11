@@ -4,16 +4,11 @@
   "description": "Native Apple Health Sync via Transition API. Provides daily sleep, HRV, resting HR, and recovery scores to any OpenClaw agent.",
   "main": "server.py",
   "openclaw": {
-    "mcp": {
-      "servers": {
-        "apple-health-sync": {
-          "command": "python3",
-          "args": [
-            "./server.py"
-          ],
-          "env": {}
-        }
-      }
+    "compat": {
+      "pluginApi": "1.0.0"
+    },
+    "build": {
+      "openclawVersion": "2026.4.5"
     }
   },
   "scripts": {
