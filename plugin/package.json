@@ -1,20 +1,22 @@
 {
-  "name": "transition-apple-health",
+  "name": "healthmaxx-apple-health-sync",
   "version": "1.0.0",
-  "description": "OpenClaw plugin to fetch real Apple Health data via Transition API",
-  "main": "index.js",
+  "description": "Native Apple Health Sync via Transition API. Provides daily sleep, HRV, resting HR, and recovery scores to any OpenClaw agent.",
+  "main": "server.py",
   "openclaw": {
-    "tools": [
-      {
-        "name": "get_apple_health_data",
-        "description": "Fetch the user's real Apple Health data for today (sleep, HRV, recovery, resting HR) via the Transition API.",
-        "parameters": {
-          "type": "object",
-          "properties": {},
-          "required": []
-        },
-        "handler": "node index.js"
+    "mcp": {
+      "servers": {
+        "apple-health-sync": {
+          "command": "python3",
+          "args": [
+            "./server.py"
+          ],
+          "env": {}
+        }
       }
-    ]
+    }
+  },
+  "scripts": {
+    "postinstall": "pip install -r requirements.txt"
   }
 }
