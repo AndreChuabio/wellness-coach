@@ -18,7 +18,11 @@ from datetime import datetime
 sys.path.insert(0, str(Path(__file__).parent.parent / "backend"))
 
 from dotenv import load_dotenv
-load_dotenv(Path(__file__).parent.parent / ".env")
+
+# Load .env from project root — absolute path so it works from any cwd
+_env_path = Path(__file__).parent.parent / ".env"
+load_dotenv(_env_path, override=True)
+print(f"  Loading .env from: {_env_path} (exists: {_env_path.exists()})")
 
 from health_mock import get_health_data
 from calendar_fetch import get_calendar_events
@@ -38,6 +42,12 @@ def main():
     print(f"  Calendar: {len(events)} events today")
 
     context = build_system_prompt(health, events)
+
+    # Debug: confirm Tavus keys are loaded
+    tavus_key = os.getenv("TAVUS_API_KEY", "")
+    tavus_replica = os.getenv("TAVUS_REPLICA_ID", "")
+    tavus_persona = os.getenv("TAVUS_PERSONA_ID", "")
+    print(f"  Tavus keys: API={'✅' if tavus_key else '❌ MISSING'} REPLICA={'✅' if tavus_replica else '❌ MISSING'} PERSONA={'✅' if tavus_persona else '❌ MISSING'}")
 
     # Create Tavus session so the link is warm and ready
     print("  Creating Tavus CVI session...")
