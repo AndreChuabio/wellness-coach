@@ -100,7 +100,7 @@ async function startSession() {
       preSession.style.display = "flex";
       preSession.querySelector(".avatar-subtitle").textContent = data.greeting || "Ready to chat!";
       preSession.querySelector(".avatar-emoji").textContent = "👋";
-      preSession.querySelector(".avatar-name").textContent = "Baymax says:";
+      preSession.querySelector(".avatar-name").textContent = "Healthmaxx says:";
       btn.style.display = "none";
       showToast("Mock mode — set Tavus API keys to enable live video", "info");
     }

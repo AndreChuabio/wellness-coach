@@ -9,7 +9,7 @@
 A conversational AI wellness coach that:
 - Reads your wearable health data (sleep, HRV, recovery)
 - Reads your Google Calendar for the day
-- Builds a personalized Claude system prompt (Baymax persona)
+- Builds a personalized Claude system prompt (Healthmaxx persona)
 - Starts a **live, interactive Tavus CVI video session** — the user speaks back and forth with the AI character
 - Proactively suggests wellness practices (breathing, meditation, movement)
 
@@ -47,7 +47,7 @@ wellness-coach/
 - FastAPI backend with 4 working endpoints
 - Health mock data + real API stubs (Oura, Fitbit, Apple Health)
 - Calendar fetch via `gog` CLI with mock fallback
-- Context builder: Claude generates Baymax system prompt + greeting + wellness recs
+- Context builder: Claude generates Healthmaxx system prompt + greeting + wellness recs
 - Tavus CVI session creation (graceful mock if no keys)
 - Frontend: dark UI, Tavus iframe, recommendations cards, health stats sidebar
 - Cron script for morning pre-build
@@ -71,7 +71,7 @@ Real-time video avatar = way more engaging demo. The character lip-syncs live to
 ### Why pre-build context at 6:30 AM?
 So the session starts *instantly* when the user opens the app — no 3-second wait for Claude to generate the system prompt. The `cron/morning_context.py` saves to `context.json` which the backend serves from `/context`.
 
-### Why Baymax?
+### Why Healthmaxx?
 Warm, caring, non-judgmental, health-obsessed. Perfect wellness coach energy. The Claude prompt instructs the AI to stay in character.
 
 ### Why mock data first?
@@ -94,7 +94,7 @@ cp .env.example .env
 | `ELEVENLABS_API_KEY` | Optional | Custom voice (Tavus has native voice) |
 
 > **Without Tavus keys:** the app still runs — it uses mock mode and shows the greeting as text.
-> **Without Anthropic key:** context builder falls back to a hardcoded Baymax prompt.
+> **Without Anthropic key:** context builder falls back to a hardcoded Healthmaxx prompt.
 
 ---
 

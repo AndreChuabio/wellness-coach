@@ -4,9 +4,9 @@ A conversational AI wellness coach that knows your health data and calendar — 
 
 ## Demo Flow
 
-1. App opens → Baymax greets you, already knowing your sleep score, HRV, and today's meetings
+1. App opens → Healthmaxx greets you, already knowing your sleep score, HRV, and today's meetings
 2. You speak naturally: "How am I doing today?"
-3. Baymax responds in real-time video: "Your HRV is a bit low. Want me to guide you through a box breathing session?"
+3. Healthmaxx responds in real-time video: "Your HRV is a bit low. Want me to guide you through a box breathing session?"
 4. Live guided breathing / meditation / wellness coaching — interactive, personalized
 
 ---

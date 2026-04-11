@@ -88,10 +88,10 @@ def format_telegram_message(ctx: dict) -> str:
     now_str = datetime.now().strftime("%-I:%M %p")
     link_line = ""
     if conversation_url and "mock" not in conversation_url:
-        link_line = f"\n\n💬 [Start your morning briefing with Baymax]({conversation_url})"
+        link_line = f"\n\n💬 [Start your morning briefing with Healthmaxx]({conversation_url})"
         link_line += f"\n_Session created at {now_str} — tap within 10 min_"
     else:
-        link_line = "\n\n💬 *Open the Wellness Coach app to chat with Baymax*"
+        link_line = "\n\n💬 *Open the Wellness Coach app to chat with Healthmaxx*"
 
     msg = f"""🌅 *Good morning, Andre!*
 
@@ -101,7 +101,7 @@ def format_telegram_message(ctx: dict) -> str:
 
 {cal_line}{rec_line}{link_line}
 
-_Baymax is ready and waiting_ 🤖"""
+_Healthmaxx is ready and waiting_ 🤖"""
 
     return msg
 
