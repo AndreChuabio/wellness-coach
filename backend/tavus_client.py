@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 TAVUS_BASE_URL = "https://tavusapi.com/v2"
+MAX_SESSION_MINUTES = 5  # Keep it snappy — this is a morning briefing, not therapy
 
 # Read at call time (not module load) so .env changes are picked up
 def _get_keys():
@@ -19,6 +20,49 @@ def _get_keys():
         os.getenv("TAVUS_REPLICA_ID"),
         os.getenv("TAVUS_PERSONA_ID"),
     )
+
+
+OBJECTIVES = [
+    {
+        "objective": "Greet the user warmly and deliver their personalized health summary (sleep, HRV, recovery) in 2-3 sentences.",
+        "order": 1
+    },
+    {
+        "objective": "Present today's top 2 wellness recommendations clearly and concisely.",
+        "order": 2
+    },
+    {
+        "objective": "Ask if the user wants to be guided through a quick wellness exercise (breathing, meditation, or stretching). If yes, guide them. If no, skip to closing.",
+        "order": 3
+    },
+    {
+        "objective": "Close with a one-sentence motivational send-off tailored to their day ahead. End the conversation.",
+        "order": 4
+    }
+]
+
+GUARDRAILS = [
+    {
+        "guardrail": "Keep the entire session under 5 minutes. If the conversation has been going for more than 4 minutes, wrap up immediately with a closing statement.",
+        "action": "override"
+    },
+    {
+        "guardrail": "Keep all responses short — 2-3 sentences max unless guiding an exercise.",
+        "action": "override"
+    },
+    {
+        "guardrail": "Never give medical diagnoses, prescribe medication, or claim health data is medical advice.",
+        "action": "redirect"
+    },
+    {
+        "guardrail": "Never discuss topics unrelated to wellness, health, or the user's day ahead.",
+        "action": "redirect"
+    },
+    {
+        "guardrail": "If the user expresses a mental health crisis or emergency, gently refer them to a professional and end the session.",
+        "action": "override"
+    }
+]
 
 
 def create_conversation(system_prompt: str, greeting: str, user_name: str = "there") -> dict:
@@ -51,10 +95,12 @@ def create_conversation(system_prompt: str, greeting: str, user_name: str = "the
         "conversation_name": "Wellness Briefing",
         "conversational_context": system_prompt,
         "custom_greeting": greeting,
+        "objectives": OBJECTIVES,
+        "guardrails": GUARDRAILS,
         "properties": {
-            "max_call_duration": 600,
-            "participant_left_timeout": 30,
-            "participant_absent_timeout": 60,
+            "max_call_duration": MAX_SESSION_MINUTES * 60,  # hard cutoff
+            "participant_left_timeout": 20,
+            "participant_absent_timeout": 30,
             "enable_recording": False,
             "apply_greenscreen": False,
             "language": "english",
