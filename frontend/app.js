@@ -50,6 +50,16 @@ function renderHealth(health) {
   document.getElementById("sleepScore").innerHTML = score(health.sleep_score) + "<small>/100</small>";
   document.getElementById("hrv").innerHTML = `${health.hrv_ms}<small>ms</small>`;
   document.getElementById("recovery").innerHTML = score(health.recovery_score) + "<small>/100</small>";
+
+  const isLive = health.source === "apple_watch";
+  const badge = document.getElementById("dataSourceBadge");
+  if (badge) {
+    badge.textContent = isLive ? "Live" : "Mock";
+    badge.className = `source-badge ${isLive ? "live" : "mock"}`;
+    badge.title = isLive
+      ? `Apple Watch data synced ${health.date}`
+      : "Using mock data — run the iOS Shortcut to sync Watch data";
+  }
 }
 
 // ── Calendar ──────────────────────────────────────────────────────────────────

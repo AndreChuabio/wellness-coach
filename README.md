@@ -160,7 +160,6 @@ uvicorn backend.main:app --host 0.0.0.0 --port $PORT
 Optional variables:
 
 - `ELEVENLABS_API_KEY`
-- `TRANSITION_API_KEY`
 - `GOOGLE_CREDENTIALS_PATH`
 - `GOOGLE_TOKEN_PATH`
 
@@ -172,27 +171,46 @@ Railway will install `backend/requirements.txt` and start the FastAPI app from `
 
 ---
 
-## Connecting Real Wearable Data
+## Connecting Real Apple Watch Data
 
-Health data is currently mocked in `backend/health_mock.py`. Replace `get_health_data()` with a real wearable integration:
+Health data defaults to a realistic 7-day mock in `backend/health_mock.py`. To pull live Apple Watch data, use the iOS Shortcut approach — no third-party app or paid tier required.
 
-### Oura Ring
-```python
-from health_mock import get_oura_health_data
-data = get_oura_health_data(api_token="your_oura_token")
+### How it works
+
+An iOS Shortcut reads your Apple Watch metrics from HealthKit and POSTs them to `POST /health-sync`. The backend stores a rolling 7-day cache in `health_cache.json` (gitignored). `get_health_data()` returns cached data if it was synced today, otherwise falls back to mock.
+
+Sleep score and recovery score are derived on the backend from raw metrics — no upstream service computes them.
+
+### iOS Shortcut setup (one-time, ~10 min)
+
+Build a Shortcut on your iPhone with these actions in order:
+
+1. **Find Health Samples** → Heart Rate Variability → last 24h → Calculate Average → save as `hrv`
+2. **Find Health Samples** → Resting Heart Rate → last 24h → Get latest → save as `resting_hr`
+3. **Find Health Samples** → Sleep Analysis → last 24h → sum Asleep hours → save as `sleep_hours`
+4. **Find Health Samples** → Step Count → yesterday → sum → save as `steps`
+5. **Find Health Samples** → Active Energy Burned → today → sum → save as `calories`
+6. **Get Contents of URL** → your backend URL + `/health-sync` → Method: POST → JSON body:
+
+```json
+{
+  "hrv_ms": hrv,
+  "resting_hr": resting_hr,
+  "sleep_hours": sleep_hours,
+  "steps_yesterday": steps,
+  "calories_burned": calories
+}
 ```
-Token: https://cloud.ouraring.com/personal-access-tokens
 
-### Fitbit
-```python
-from health_mock import get_fitbit_health_data
-data = get_fitbit_health_data(access_token="your_fitbit_token")
+Then in **iOS Automations**: Time of Day → 6:00 AM → run the Shortcut.
+
+### Verify it's working
+
 ```
-Token: https://dev.fitbit.com
+GET /health-sync/status
+```
 
-### Apple Health
-Use [Health Auto Export](https://www.healthexportapp.com/) to export JSON, then parse in `health_mock.py`.
-Or use [Terra API](https://tryterra.co) as a unified wearable bridge.
+Returns the last sync date, source (`apple_watch` or `mock`), and key metrics.
 
 ---
 
@@ -217,7 +235,8 @@ crontab -e
 |---|---|
 | Avatar + Video | [Tavus CVI](https://tavus.io) |
 | LLM Brain | [Claude](https://anthropic.com) (Haiku) |
+| Health Data | Apple Watch via iOS Shortcut + HealthKit |
 | Calendar | Google Calendar API (OAuth) |
-| Backend | FastAPI + Python |
+| Backend | FastAPI + Python, deployed on Railway |
 | Frontend | Vanilla JS, no build step |
-| Scheduler | cron |
+| Scheduler | cron + iOS Automations |

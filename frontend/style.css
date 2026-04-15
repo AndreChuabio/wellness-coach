@@ -89,6 +89,20 @@ body {
 .badge { font-size: 10px; color: var(--warn); margin-top: 2px; }
 .loading-text { color: var(--muted); font-size: 13px; }
 
+.source-badge {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  padding: 2px 7px;
+  border-radius: 99px;
+  vertical-align: middle;
+  margin-left: 6px;
+  text-transform: uppercase;
+  cursor: default;
+}
+.source-badge.live { background: rgba(52, 211, 153, 0.15); color: #34d399; }
+.source-badge.mock { background: rgba(148, 163, 184, 0.15); color: var(--muted); }
+
 /* ── Center Panel ──────────────────────────────────────────────────── */
 .center-panel { flex: 1; display: flex; flex-direction: column; gap: 20px; }
 

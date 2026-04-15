@@ -9,7 +9,9 @@ Endpoints:
 """
 
 import json
+import logging
 import os
+from datetime import datetime, timezone
 from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -20,10 +22,12 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from health_mock import get_health_data
+from health_mock import get_health_data, ingest_shortcut_payload
 from calendar_fetch import get_calendar_events
 from context_builder import build_system_prompt
 from tavus_client import create_conversation
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Wellness Coach AI", version="1.0.0")
 
@@ -46,6 +50,14 @@ class StartSessionRequest(BaseModel):
     user_name: str = "there"
 
 
+class HealthSyncPayload(BaseModel):
+    hrv_ms: float | None = None
+    resting_hr: float | None = None
+    sleep_hours: float | None = None
+    steps_yesterday: float | None = None
+    calories_burned: float | None = None
+
+
 @app.get("/")
 def root():
     index = FRONTEND_DIR / "index.html"
@@ -66,6 +78,38 @@ def debug_env():
         "TAVUS_REPLICA_ID":    mask(os.getenv("TAVUS_REPLICA_ID")),
         "TAVUS_PERSONA_ID":    mask(os.getenv("TAVUS_PERSONA_ID")),
         "TRANSITION_API_KEY": mask(os.getenv("TRANSITION_API_KEY")),
+    }
+
+
+@app.post("/health-sync")
+def health_sync(payload: HealthSyncPayload):
+    """
+    Ingest Apple Watch metrics posted by the iOS Shortcut.
+    Derives sleep_score and recovery_score, appends to rolling 7-day cache.
+    """
+    try:
+        record = ingest_shortcut_payload(payload.model_dump())
+        logger.info("Health sync received: hrv=%s resting_hr=%s sleep=%sh",
+                    record.get("hrv_ms"), record.get("resting_hr"), record.get("sleep_hours"))
+        return {"status": "ok", "synced_at": datetime.now(timezone.utc).isoformat(), "record": record}
+    except Exception as e:
+        logger.error("Health sync failed: %s", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/health-sync/status")
+def health_sync_status():
+    """Report when data was last received from the Shortcut."""
+    from health_mock import _load_cache
+    cache = _load_cache()
+    if not cache:
+        return {"status": "no_data", "message": "No Apple Watch data received yet — run the iOS Shortcut."}
+    return {
+        "status":       "ok" if cache.get("source") == "apple_watch" else "mock",
+        "source":       cache.get("source"),
+        "last_sync":    cache.get("date"),
+        "hrv_ms":       cache.get("hrv_ms"),
+        "sleep_hours":  cache.get("sleep_hours"),
     }
 
 

@@ -5,6 +5,7 @@ __pycache__/
 .venv/
 venv/
 context.json
+health_cache.json
 .DS_Store
 *.egg-info/
 dist/
