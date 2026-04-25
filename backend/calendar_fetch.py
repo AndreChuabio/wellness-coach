@@ -2,6 +2,7 @@
 calendar_fetch.py - Fetch today's calendar events via Google Calendar API
 
 Uses google-api-python-client with OAuth2 credentials.
+Per-user OAuth tokens — see _resolve_token_path for the lookup order.
 Falls back to mock data if credentials are unavailable.
 """
 
@@ -10,30 +11,51 @@ import subprocess
 import json
 import re
 from datetime import datetime, timezone, timedelta
+from pathlib import Path
 from dotenv import load_dotenv
 
 load_dotenv()
 
+_PROJECT_ROOT = Path(__file__).parent.parent
 
-def get_calendar_events() -> list[dict]:
+
+def _resolve_token_path(user: str) -> str:
     """
-    Returns today's calendar events.
+    Token path lookup order:
+      1. GOOGLE_TOKEN_PATH_<USER>  (explicit per-user override)
+      2. /tmp/token_<user>.pickle  (Railway materializer writes here)
+      3. <project_root>/token_<user>.pickle  (local dev convention)
+    Returns the first path that exists, or the local-dev path even if it
+    doesn't exist so the caller can log a useful error.
+    """
+    explicit = os.getenv(f"GOOGLE_TOKEN_PATH_{user.upper()}")
+    if explicit:
+        return explicit
+    tmp = f"/tmp/token_{user}.pickle"
+    if os.path.exists(tmp):
+        return tmp
+    return str(_PROJECT_ROOT / f"token_{user}.pickle")
+
+
+def get_calendar_events(user: str) -> list[dict]:
+    """
+    Returns today's calendar events for `user`.
     Tries Google Calendar API first, falls back to mock.
     """
-    events = _try_gcal_api()
+    events = _try_gcal_api(user)
     if events is not None:
         return events
-    print("[calendar] Falling back to mock data")
+    print(f"[calendar] Falling back to mock data for {user}")
     return get_mock_calendar()
 
 
-def _try_gcal_api() -> list[dict] | None:
-    """Fetch real events from Google Calendar API using service account or OAuth credentials."""
+def _try_gcal_api(user: str) -> list[dict] | None:
+    """Fetch real events from Google Calendar API using OAuth credentials for `user`."""
     creds_path = os.getenv("GOOGLE_CREDENTIALS_PATH", "")
-    token_path = os.getenv("GOOGLE_TOKEN_PATH", "")
+    token_path = _resolve_token_path(user)
 
-    if not creds_path and not token_path:
-        print("[calendar] No GOOGLE_CREDENTIALS_PATH or GOOGLE_TOKEN_PATH set")
+    if not creds_path and not os.path.exists(token_path):
+        print(f"[calendar] No credentials configured for {user} (token={token_path})")
         return None
 
     try:
@@ -56,7 +78,7 @@ def _try_gcal_api() -> list[dict] | None:
                 pickle.dump(creds, f)
 
         if not creds or not creds.valid:
-            print("[calendar] Credentials invalid or missing")
+            print(f"[calendar] Credentials invalid or missing for {user}")
             return None
 
         service = build("calendar", "v3", credentials=creds)
@@ -97,14 +119,14 @@ def _try_gcal_api() -> list[dict] | None:
                 "type": "high_stakes" if is_high_stakes else "meeting"
             })
 
-        print(f"[calendar] Fetched {len(events)} real events from Google Calendar")
+        print(f"[calendar] Fetched {len(events)} real events from Google Calendar for {user}")
         return events if events else []
 
     except ImportError:
         print("[calendar] google-api-python-client not installed, run: pip install google-api-python-client google-auth")
         return None
     except Exception as e:
-        print(f"[calendar] GCal API error: {e}")
+        print(f"[calendar] GCal API error for {user}: {e}")
         return None
 
 

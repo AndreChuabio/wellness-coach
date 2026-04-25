@@ -4,6 +4,9 @@ const API_BASE = window.location.hostname.includes("localhost")
   ? LOCAL_API_BASE
   : PRODUCTION_API_BASE;
 
+const VALID_USERS = ["andre", "nikki"];
+const DISPLAY_NAMES = { andre: "Andre", nikki: "Nikki" };
+
 const CATEGORY_ICONS = {
   breathing: "🫁",
   meditation: "🧘",
@@ -14,26 +17,80 @@ const CATEGORY_ICONS = {
   default: "✨"
 };
 
+// ── Identity + auth ───────────────────────────────────────────────────────────
+
+function getUser() {
+  const stored = localStorage.getItem("user");
+  return VALID_USERS.includes(stored) ? stored : "andre";
+}
+
+function getPassword() {
+  let pw = localStorage.getItem("appPassword");
+  if (!pw) {
+    pw = prompt("Enter the app password (ask Andre if you don't have it):");
+    if (pw) localStorage.setItem("appPassword", pw);
+  }
+  return pw || "";
+}
+
+function clearPassword() {
+  localStorage.removeItem("appPassword");
+}
+
+async function apiFetch(path, opts = {}) {
+  const user = getUser();
+  const sep = path.includes("?") ? "&" : "?";
+  const url = `${API_BASE}${path}${sep}user=${encodeURIComponent(user)}`;
+  const headers = {
+    ...(opts.headers || {}),
+    "X-App-Password": getPassword(),
+  };
+  if (opts.body && !headers["Content-Type"]) headers["Content-Type"] = "application/json";
+
+  const res = await fetch(url, { ...opts, headers });
+  if (res.status === 401) {
+    clearPassword();
+    alert("Wrong password — try again.");
+    window.location.reload();
+    throw new Error("unauthorized");
+  }
+  return res;
+}
+
 // ── Init ──────────────────────────────────────────────────────────────────────
 
 document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("dateDisplay").textContent = new Date().toLocaleDateString(
     "en-US", { weekday: "long", month: "long", day: "numeric" }
   );
+
+  const select = document.getElementById("userSelect");
+  if (select) {
+    select.value = getUser();
+    select.addEventListener("change", (e) => {
+      localStorage.setItem("user", e.target.value);
+      window.location.reload();
+    });
+  }
+
+  // Trigger password prompt early so the rest of the app has it cached
+  getPassword();
+
   loadSidebar();
 });
 
 async function loadSidebar() {
   try {
     const [healthRes, calRes] = await Promise.all([
-      fetch(`${API_BASE}/health-data`),
-      fetch(`${API_BASE}/calendar`)
+      apiFetch("/health-data"),
+      apiFetch("/calendar")
     ]);
     const health = await healthRes.json();
     const cal = await calRes.json();
     renderHealth(health);
     renderCalendar(cal.events);
   } catch (e) {
+    if (e.message === "unauthorized") return;
     console.error("Failed to load sidebar data:", e);
     showToast("Could not connect to backend — is it running?", "error");
   }
@@ -92,10 +149,9 @@ async function startSession() {
   loading.style.display = "flex";
 
   try {
-    const res = await fetch(`${API_BASE}/start-session`, {
+    const res = await apiFetch("/start-session", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user_name: "Andre" })
+      body: JSON.stringify({ user: getUser() })
     });
 
     if (!res.ok) throw new Error(`Server error: ${res.status}`);
@@ -129,6 +185,7 @@ async function startSession() {
     loading.style.display = "none";
     preSession.style.display = "flex";
     btn.disabled = false;
+    if (e.message === "unauthorized") return;
     console.error(e);
     showToast(`Error: ${e.message}`, "error");
   }
