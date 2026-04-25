@@ -39,6 +39,16 @@ body {
 .logo { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 600; }
 .logo-icon { font-size: 24px; }
 .date-display { color: var(--muted); font-size: 13px; }
+.header-right { display: flex; align-items: center; gap: 16px; }
+.user-select {
+  background: var(--surface);
+  color: inherit;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 13px;
+  cursor: pointer;
+}
 
 .main {
   display: flex;

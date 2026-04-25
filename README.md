@@ -152,16 +152,18 @@ uvicorn backend.main:app --host 0.0.0.0 --port $PORT
 
 4. Set the required environment variables in Railway:
 
+- `APP_PASSWORD` — shared password for the deployed app (the frontend prompts for it once)
 - `ANTHROPIC_API_KEY`
 - `TAVUS_API_KEY`
 - `TAVUS_REPLICA_ID`
 - `TAVUS_PERSONA_ID`
+- `GOOGLE_CREDENTIALS_JSON` — paste the raw contents of `credentials.json`
+- `GOOGLE_TOKEN_PICKLE_B64_ANDRE` — base64 of `token_andre.pickle` (printed by `setup_gcal.py --user andre`)
+- `GOOGLE_TOKEN_PICKLE_B64_NIKKI` — base64 of `token_nikki.pickle` (printed by `setup_gcal.py --user nikki`)
 
 Optional variables:
 
 - `ELEVENLABS_API_KEY`
-- `GOOGLE_CREDENTIALS_PATH`
-- `GOOGLE_TOKEN_PATH`
 
 5. Deploy the service.
 
@@ -171,13 +173,50 @@ Railway will install `backend/requirements.txt` and start the FastAPI app from `
 
 ---
 
+## Migrating from the old single-user layout
+
+If you ran an earlier version of the app, you'll have these files in the project root:
+
+```
+health_cache.json   →  rename to health_cache_andre.json
+token.pickle        →  rename to token_andre.pickle
+context.json        →  delete (cron will rebuild as context_andre.json)
+```
+
+Railway is fresh on every deploy so nothing to migrate there.
+
+## Multi-user (Andre + Nikki)
+
+The app supports two users sharing one Railway deployment. Each user has their own:
+- Apple Watch data (`health_cache_<user>.json`)
+- Google Calendar token (`token_<user>.pickle`)
+- Pre-built morning context (`context_<user>.json`)
+
+A shared `APP_PASSWORD` env var gates the backend (sent as `X-App-Password` header by the frontend after a one-time prompt). The frontend has a user-picker dropdown in the header — switching reloads the page.
+
+### Onboarding a second user (e.g. Nikki)
+
+On Nikki's machine:
+
+```bash
+git clone https://github.com/AndreChuabio/wellness-coach
+cd wellness-coach
+pip install -r backend/requirements.txt
+# Use the same credentials.json as Andre — it's the OAuth client config, not user data
+python3 setup_gcal.py --user nikki
+```
+
+The script signs Nikki into Google with her own account and writes `token_nikki.pickle`. It also prints a base64-encoded blob — copy that and set it on Railway as `GOOGLE_TOKEN_PICKLE_B64_NIKKI`.
+
+For the iOS Shortcut, build the same flow as below but include `"user": "nikki"` in the JSON body.
+
 ## Connecting Real Apple Watch Data
 
 Health data defaults to a realistic 7-day mock in `backend/health_mock.py`. To pull live Apple Watch data, use the iOS Shortcut approach — no third-party app or paid tier required.
 
 ### How it works
 
-An iOS Shortcut reads your Apple Watch metrics from HealthKit and POSTs them to `POST /health-sync`. The backend stores a rolling 7-day cache in `health_cache.json` (gitignored). `get_health_data()` returns cached data if it was synced today, otherwise falls back to mock.
+An iOS Shortcut reads your Apple Watch metrics from HealthKit and POSTs them to `POST /health-sync`. The backend stores a rolling 7-day cache in `health_cache_<user>.json` (gitignored). `get_health_data(user)` returns cached data if it was synced today, otherwise falls back to mock.
 
 Sleep score and recovery score are derived on the backend from raw metrics — no upstream service computes them.
 
@@ -190,10 +229,11 @@ Build a Shortcut on your iPhone with these actions in order:
 3. **Find Health Samples** → Sleep Analysis → last 24h → sum Asleep hours → save as `sleep_hours`
 4. **Find Health Samples** → Step Count → yesterday → sum → save as `steps`
 5. **Find Health Samples** → Active Energy Burned → today → sum → save as `calories`
-6. **Get Contents of URL** → your backend URL + `/health-sync` → Method: POST → JSON body:
+6. **Get Contents of URL** → your backend URL + `/health-sync` → Method: POST → Headers: `X-App-Password: <your APP_PASSWORD>` → JSON body:
 
 ```json
 {
+  "user": "andre",
   "hrv_ms": hrv,
   "resting_hr": resting_hr,
   "sleep_hours": sleep_hours,
@@ -202,13 +242,16 @@ Build a Shortcut on your iPhone with these actions in order:
 }
 ```
 
+(Nikki's Shortcut uses `"user": "nikki"`.)
+
 Then in **iOS Automations**: Time of Day → 6:00 AM → run the Shortcut.
 
 ### Verify it's working
 
 ```
-GET /health-sync/status
+GET /health-sync/status?user=andre
 ```
+(with the `X-App-Password` header)
 
 Returns the last sync date, source (`apple_watch` or `mock`), and key metrics.
 

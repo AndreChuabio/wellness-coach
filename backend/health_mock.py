@@ -1,13 +1,13 @@
 """
-health_mock.py - Wearable health data with 7-day trend history
+health_mock.py - Per-user wearable health data with 7-day trend history.
 
-Data priority:
-  1. health_cache.json written by the iOS Shortcut via POST /health-sync
+Data priority (per user):
+  1. health_cache_<user>.json written by the iOS Shortcut via POST /health-sync
   2. Mock data (realistic declining-trend week) as fallback
 
 Cache is considered fresh if the most recent entry is from today.
-The Shortcut posts raw Apple Watch metrics; sleep_score and recovery_score
-are derived here so the Shortcut payload stays simple.
+The Shortcut posts raw Apple Watch metrics + a "user" field; sleep_score
+and recovery_score are derived here so the Shortcut payload stays simple.
 """
 
 import json
@@ -18,29 +18,33 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-CACHE_FILE = Path(__file__).parent.parent / "health_cache.json"
+_CACHE_DIR = Path(__file__).parent.parent
 MAX_HISTORY_DAYS = 7
+
+
+def _cache_path(user: str) -> Path:
+    return _CACHE_DIR / f"health_cache_{user}.json"
 
 
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
 
-def get_health_data() -> dict:
+def get_health_data(user: str) -> dict:
     """
-    Returns today's health metrics + 7-day history.
+    Returns today's health metrics + 7-day history for the given user.
     Prefers real Apple Watch data from cache; falls back to mock.
     """
-    cache = _load_cache()
+    cache = _load_cache(user)
     if cache and _is_fresh(cache):
         return cache
     return get_mock_health_data()
 
 
-def ingest_shortcut_payload(payload: dict) -> dict:
+def ingest_shortcut_payload(payload: dict, user: str) -> dict:
     """
-    Accept raw metrics from the iOS Shortcut, derive scores, append to
-    rolling 7-day cache, and return the completed day record.
+    Accept raw metrics from the iOS Shortcut for `user`, derive scores,
+    append to rolling 7-day cache, and return the completed day record.
 
     Expected payload fields (all optional except at least one metric):
       hrv_ms, resting_hr, sleep_hours, steps_yesterday, calories_burned
@@ -54,9 +58,10 @@ def ingest_shortcut_payload(payload: dict) -> dict:
         "steps_yesterday":  int(payload.get("steps_yesterday") or 0),
         "calories_burned":  int(payload.get("calories_burned") or 0),
         "source":           "apple_watch",
+        "user":             user,
     }
 
-    history = _load_history()
+    history = _load_history(user)
     # Replace today's entry if it already exists (re-sync case)
     history = [d for d in history if d["date"] != today_str]
     history.append(raw)
@@ -64,7 +69,7 @@ def ingest_shortcut_payload(payload: dict) -> dict:
     history = sorted(history, key=lambda d: d["date"])[-MAX_HISTORY_DAYS:]
 
     record = _build_full_record(raw, history)
-    _save_cache(record, history)
+    _save_cache(record, history, user)
     return record
 
 
@@ -72,28 +77,29 @@ def ingest_shortcut_payload(payload: dict) -> dict:
 # Cache helpers
 # ---------------------------------------------------------------------------
 
-def _load_cache() -> dict | None:
-    if not CACHE_FILE.exists():
+def _load_cache(user: str) -> dict | None:
+    path = _cache_path(user)
+    if not path.exists():
         return None
     try:
-        with open(CACHE_FILE) as f:
+        with open(path) as f:
             return json.load(f)
     except Exception as e:
-        logger.warning(f"Could not read health cache: {e}")
+        logger.warning(f"Could not read health cache for {user}: {e}")
         return None
 
 
-def _save_cache(record: dict, history: list) -> None:
+def _save_cache(record: dict, history: list, user: str) -> None:
     data = {**record, "history": history, "trend": _analyze_trend(history, record)}
     try:
-        with open(CACHE_FILE, "w") as f:
+        with open(_cache_path(user), "w") as f:
             json.dump(data, f, indent=2)
     except Exception as e:
-        logger.error(f"Could not write health cache: {e}")
+        logger.error(f"Could not write health cache for {user}: {e}")
 
 
-def _load_history() -> list:
-    cache = _load_cache()
+def _load_history(user: str) -> list:
+    cache = _load_cache(user)
     if not cache:
         return []
     return cache.get("history", [])

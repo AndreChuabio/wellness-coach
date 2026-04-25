@@ -28,58 +28,64 @@ from health_mock import get_health_data
 from calendar_fetch import get_calendar_events
 from context_builder import build_system_prompt
 from tavus_client import create_conversation
+from users import USERS, display_name
 
-OUTPUT_FILE = Path(__file__).parent.parent / "context.json"
+
+def _output_file(user: str) -> Path:
+    return Path(__file__).parent.parent / f"context_{user}.json"
 
 
-def main():
-    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M')}] Building morning wellness context...")
+def _build_for_user(user: str) -> None:
+    print(f"\n=== {display_name(user)} ===")
 
-    health = get_health_data()
+    health = get_health_data(user)
     print(f"  Sleep: {health['sleep_hours']}h | HRV: {health['hrv_ms']}ms | Recovery: {health['recovery_score']}/100")
 
-    events = get_calendar_events()
+    events = get_calendar_events(user)
     print(f"  Calendar: {len(events)} events today")
 
-    context = build_system_prompt(health, events)
+    context = build_system_prompt(user, health, events)
 
-    # Debug: confirm Tavus keys are loaded
-    tavus_key = os.getenv("TAVUS_API_KEY", "")
-    tavus_replica = os.getenv("TAVUS_REPLICA_ID", "")
-    tavus_persona = os.getenv("TAVUS_PERSONA_ID", "")
-    print(f"  Tavus keys: API={'✅' if tavus_key else '❌ MISSING'} REPLICA={'✅' if tavus_replica else '❌ MISSING'} PERSONA={'✅' if tavus_persona else '❌ MISSING'}")
-
-    # Create Tavus session so the link is warm and ready
     print("  Creating Tavus CVI session...")
     conversation = create_conversation(
         system_prompt=context["system_prompt"],
-        greeting=context["greeting"]
+        greeting=context["greeting"],
+        user_name=display_name(user),
     )
     conversation_url = conversation.get("conversation_url", "")
     is_mock = conversation.get("status") == "mock"
     print(f"  {'[MOCK] ' if is_mock else ''}Conversation URL: {conversation_url}")
 
-    # Save everything to context.json
+    output_file = _output_file(user)
     output = {
         "generated_at": datetime.now().isoformat(),
+        "user": user,
         "health": health,
         "events": events,
         "conversation_url": conversation_url,
         "conversation_id": conversation.get("conversation_id"),
-        **context
+        **context,
     }
-    with open(OUTPUT_FILE, "w") as f:
+    with open(output_file, "w") as f:
         json.dump(output, f, indent=2)
 
-    print(f"\n✅ Context saved to {OUTPUT_FILE}")
-    print(f"\n🌅 Today's Top Recommendations:")
-    for i, rec in enumerate(context["recommendations"], 1):
-        print(f"  {i}. [{rec['category'].upper()}] {rec['title']}")
-        print(f"     {rec['detail'][:100]}...")
+    print(f"  ✅ Context saved to {output_file}")
+    print(f"  💬 Greeting: {context['greeting']}")
 
-    print(f"\n💬 Greeting: {context['greeting']}")
-    if conversation_url:
-        print(f"\n🔗 Tavus session: {conversation_url}")
+
+def main():
+    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M')}] Building morning wellness context for all users...")
+
+    tavus_key = os.getenv("TAVUS_API_KEY", "")
+    tavus_replica = os.getenv("TAVUS_REPLICA_ID", "")
+    tavus_persona = os.getenv("TAVUS_PERSONA_ID", "")
+    print(f"  Tavus keys: API={'✅' if tavus_key else '❌ MISSING'} REPLICA={'✅' if tavus_replica else '❌ MISSING'} PERSONA={'✅' if tavus_persona else '❌ MISSING'}")
+
+    for user in USERS:
+        try:
+            _build_for_user(user)
+        except Exception as e:
+            print(f"  ❌ Failed for {user}: {e}")
 
 
 if __name__ == "__main__":
