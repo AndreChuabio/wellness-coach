@@ -157,3 +157,36 @@ Test with Swagger: `http://localhost:8000/docs`
 - Time constraint: ship a working demo
 - Priority order: **working demo > clean code > full features**
 - The Tavus CVI integration is the money shot — prioritize getting that live
+
+---
+
+## Cursor Cloud specific instructions
+
+### Running the backend
+
+```bash
+cd backend && uvicorn main:app --reload --host 0.0.0.0 --port 8000
+```
+
+The frontend is served by FastAPI at `/` — no separate frontend server needed. Open `http://localhost:8000` in a browser.
+
+### Mock mode (.env setup)
+
+The `.env.example` ships with placeholder values like `your_anthropic_key_here`. These are treated as "set" by the code and will cause 401 errors against real APIs. For mock mode, copy `.env.example` to `.env` and **clear all API key values** (leave them blank). The fallback logic checks `os.getenv("KEY")` truthiness, so empty strings correctly trigger mock paths.
+
+### Linting
+
+No linter config (pyproject.toml, setup.cfg, .flake8) is committed. Use `flake8 backend/ --max-line-length=120` for a quick check. Existing code has style-only warnings (unused imports, line length) — no functional issues.
+
+### Tests
+
+No automated test suite exists yet. Validate changes by hitting endpoints via curl or the Swagger UI at `http://localhost:8000/docs`. Key smoke tests:
+
+- `GET /health-data` — returns mock 7-day health metrics
+- `GET /calendar` — returns mock calendar events
+- `POST /start-session` — runs full pipeline (mock greeting + recommendations)
+- `GET /context` — builds context on the fly if no `context.json` exists
+
+### PyJWT conflict
+
+The base VM has a system-installed PyJWT that blocks pip. Run `pip install --ignore-installed PyJWT` before `pip install -r requirements.txt` if you hit a "Cannot uninstall PyJWT" error.
